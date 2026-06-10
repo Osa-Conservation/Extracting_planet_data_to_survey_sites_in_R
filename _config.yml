@@ -1,0 +1,17 @@
+title: Accessing Planet data in R
+description: A 15-minute primer for the Osa Conservation science team
+theme: jekyll-theme-cayman
+
+# Cayman is GitHub Pages' built-in landing-page theme — clean, single-column,
+# good for tutorials. Other supported themes: minima, jekyll-theme-minimal,
+# jekyll-theme-architect, jekyll-theme-slate. See:
+#   https://pages.github.com/themes/
+
+show_downloads: false
+
+# Don't process the R scripts as Jekyll content
+exclude:
+  - R/
+  - data/
+  - "*.Rproj"
+  - .Renviron

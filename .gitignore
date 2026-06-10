@@ -1,0 +1,33 @@
+# ===== Credentials — NEVER commit these =====
+.Renviron
+.env
+*.pem
+*_secret*
+*_credentials*
+
+# ===== R =====
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+*.Rproj
+
+# ===== Big data =====
+# Keep small example CSVs/shapefiles tracked, but exclude heavy outputs.
+# Adjust this section to suit what you actually want shared.
+data/raw/
+data/large/
+*.tif
+*.gpkg
+*.zip
+
+# ===== OS / editors =====
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# ===== Jekyll =====
+_site/
+.jekyll-cache/
+.jekyll-metadata

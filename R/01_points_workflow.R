@@ -20,19 +20,19 @@ library(leaflet)
 
 # Buffer radius around each point (metres). Pick something ecologically
 # meaningful — e.g. detection radius for camera traps, transect width, etc.
-buffer_radius <- 100
+buffer_radius <- 50
 
 # Time window. Forest Carbon Diligence is annual; give a window that spans the
 # year(s) you want.
-time_from <- "2023-01-01T00:00:00Z"
-time_to   <- "2023-12-31T23:59:59Z"
+time_from <- "2024-01-01T00:00:00Z"
+time_to   <- "2024-12-31T23:59:59Z"
 
-# Collections to query. Replace these BYOC IDs with your own from
+# Collection ID's to query. Replace these BYOC IDs with your own from
 # https://insights.planet.com/data/collections/ (TPDI tab).
 collections <- list(
-  biomass       = list(id = "byoc-XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX", band = "ACD"),
-  canopy_cover  = list(id = "byoc-XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX", band = "CC"),
-  canopy_height = list(id = "byoc-XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX", band = "CH")
+  biomass       = list(id = "byoc-96357063-a972-4410-a7a9-5e56105ae393", band = "ACD"),
+  canopy_cover  = list(id = "byoc-ed6d973a-7449-4721-bf8f-c465fc4382e4", band = "CC"),
+  canopy_height = list(id = "byoc-dea673eb-421b-4e91-bd5c-7bbac6be022c", band = "CH")
 )
 
 # -------------------------- 2. AUTH ------------------------------------------

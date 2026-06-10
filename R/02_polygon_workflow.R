@@ -21,7 +21,7 @@ library(leaflet)
 
 # -------------------------- 1. CONFIG ----------------------------------------
 
-shapefile_path <- "data/plots.shp"   # <- your shapefile
+shapefile_path <- "data/example_shapes.shp"   # <- your shapefile
 id_column      <- "plot_id"          # <- the column that uniquely identifies plots
 
 # Years to query (one calendar year per row).
@@ -29,9 +29,9 @@ years <- 2014:2024
 
 # Collections to query.
 collections <- list(
-  biomass       = list(id = "byoc-XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX", band = "ACD"),
-  canopy_cover  = list(id = "byoc-XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX", band = "CC"),
-  canopy_height = list(id = "byoc-XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX", band = "CH")
+  biomass       = list(id = "byoc-96357063-a972-4410-a7a9-5e56105ae393", band = "ACD"),
+  canopy_cover  = list(id = "byoc-553728e5-7931-4316-8f31-424d53cce475", band = "CC"),
+  canopy_height = list(id = "byoc-6a7b70e8-f001-4407-88ed-272069c09dab", band = "CH")
 )
 
 # -------------------------- 2. AUTH ------------------------------------------
@@ -54,7 +54,6 @@ bearer_token <- get_token(Sys.getenv("SH_CLIENT_ID"),
 # -------------------------- 3. READ POLYGONS ---------------------------------
 
 plots_sf <- st_read(shapefile_path) |> st_transform(4326)
-plots_sf$id <- plots_sf[[id_column]]
 
 # If the shapefile has MULTIPOLYGON features, cast to POLYGON so each row is a
 # single ring the API can ingest.
@@ -186,29 +185,6 @@ ggplot(ts_long, aes(x = year, y = value, colour = plot_id, group = plot_id)) +
   theme(strip.text = element_text(size = 12, face = "bold"),
         legend.position = "bottom")
 
-ggsave("figures/timeseries_all_plots.png", width = 10, height = 8)
-
-# -------------------------- 8. PLOT — site-wide mean (± SE) ------------------
-
-ts_summary <- ts_long |>
-  group_by(year, metric) |>
-  summarise(mean = mean(value, na.rm = TRUE),
-            se   = sd(value, na.rm = TRUE) / sqrt(sum(!is.na(value))),
-            .groups = "drop")
-
-ggplot(ts_summary, aes(year, mean)) +
-  geom_ribbon(aes(ymin = mean - se, ymax = mean + se),
-              alpha = 0.3, fill = "forestgreen") +
-  geom_line(colour = "forestgreen", linewidth = 1.2) +
-  geom_point(colour = "forestgreen", size = 3) +
-  facet_wrap(~metric, scales = "free_y", ncol = 1,
-             labeller = labeller(metric = metric_labels)) +
-  labs(title = "Mean forest structure across plots (± SE)",
-       x = "Year", y = NULL) +
-  theme_minimal() +
-  theme(strip.text = element_text(size = 12, face = "bold"))
-
-ggsave("figures/timeseries_mean.png", width = 8, height = 8)
 
 # -------------------------- 9. MAP — Δ biomass between two years -------------
 

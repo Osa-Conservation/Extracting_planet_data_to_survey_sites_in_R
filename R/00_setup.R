@@ -11,12 +11,15 @@ if (length(missing) > 0) install.packages(missing)
 invisible(lapply(needed, library, character.only = TRUE))
 
 # --- 2. Credentials ----------------------------------------------------------
+# To get them go to
+# https://insights.planet.com/account/ -> Oauth Clients - and create one! 
+
 # These must live in ~/.Renviron, not in this script. To set them:
 #   1) Run: usethis::edit_r_environ()      # opens ~/.Renviron
 #   2) Add two lines:
 #        SH_CLIENT_ID=your-client-id-here
 #        SH_CLIENT_SECRET=your-client-secret-here
-#   3) Save, restart R.
+#   3) Save, restart R.... and re-load the packages
 
 client_id     <- Sys.getenv("SH_CLIENT_ID")
 client_secret <- Sys.getenv("SH_CLIENT_SECRET")
@@ -45,5 +48,5 @@ get_token <- function(client_id, client_secret) {
 }
 
 bearer_token <- get_token(client_id, client_secret)
-message("✅ Authenticated. Token length: ", nchar(bearer_token))
-message("✅ All packages loaded. You're ready for the session.")
+message("Authenticated. Token length: ", nchar(bearer_token))
+message("All packages loaded. You're ready for the session.")

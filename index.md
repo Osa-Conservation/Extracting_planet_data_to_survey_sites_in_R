@@ -7,7 +7,7 @@ title: Accessing Planet data in R
 
 By the end of this you'll be able to pull Planet Forest Diligence values (above-ground carbon density, canopy cover, canopy height, and their associated error) for your own field sites in R - whether those sites are points (e.g. camera traps, bird stations) or polygons (e.g. restoration plots, conservation easements)! You don't download imagery - you'll only pull the summary statistics you need, so the workflow scales to hundreds of sites easily!
 
-The full code lives in [`R/`](https://github.com/Osa-Conservation/Extracting_planet_data_to_survey_sites_in_R/tree/main/R). This page walks through the logic.
+The three R scripts live in [`the R/ folder`](https://github.com/Osa-Conservation/Extracting_planet_data_to_survey_sites_in_R/tree/main/R). This page walks an overview of the process.
 
 ------------------------------------------------------------------------
 
@@ -16,6 +16,7 @@ The full code lives in [`R/`](https://github.com/Osa-Conservation/Extracting_pla
 ------------------------------------------------------------------------
 
 ## Setup
+The R code to set up you session leaves here: [`R/00_setup.R`](https://github.com/Osa-Conservation/Extracting_planet_data_to_survey_sites_in_R/blob/main/R/00_setup.R)
 
 Top run this for your own sites/locations you will need:
 
@@ -48,7 +49,7 @@ Save, restart R. The scripts associated here then read them with `Sys.getenv()`,
 install.packages(c("httr", "sf", "terra", "dplyr", "tidyr", "ggplot2", "leaflet"))
 ```
 
-That's it. Run [`R/00_setup.R`](https://github.com/YOUR-GH-USERNAME/osa-planet-r-tutorial/blob/main/R/00_setup.R) to confirm everything works before the session.
+That's it. Run [`R/00_setup.R`](https:///github.com/Osa-Conservation/Extracting_planet_data_to_survey_sites_in_R/blob/main/R/00_setup.R) to confirm everything works before the session.
 
 ------------------------------------------------------------------------
 
@@ -105,8 +106,6 @@ get_token <- function(client_id, client_secret) {
 bearer_token <- get_token(Sys.getenv("SH_CLIENT_ID"),
                           Sys.getenv("SH_CLIENT_SECRET"))
 ```
-
-If you're doing a reeaaally long run (hundreds of sites), the token may expire mid-run. One fix might be to call `get_token()` again periodically.
 
 ------------------------------------------------------------------------
 

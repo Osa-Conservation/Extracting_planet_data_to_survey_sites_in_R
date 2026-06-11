@@ -29,10 +29,33 @@ time_to   <- "2024-12-31T23:59:59Z"
 
 # Collection ID's to query. Replace these BYOC IDs with your own from
 # https://insights.planet.com/data/collections/ (TPDI tab).
+
+# Each entry can request several bands at once — the mean of the value band
+# plus, if your collection exposes them, the lower (5th %) and upper (95th %)
+# prediction-bound bands that make up Planet's 90 % uncertainty interval.
+#
+#  Band names may vary by collection, so check what ships with the product in the collections Menu
+#  IF THERE IS NO UNCERTAINTY - e.g Land surface temperature - Set `lower` / `upper` to NULL 
+   
 collections <- list(
-  biomass       = list(id = "byoc-96357063-a972-4410-a7a9-5e56105ae393", band = "ACD"),
-  canopy_cover  = list(id = "byoc-ed6d973a-7449-4721-bf8f-c465fc4382e4", band = "CC"),
-  canopy_height = list(id = "byoc-dea673eb-421b-4e91-bd5c-7bbac6be022c", band = "CH")
+  biomass = list(
+    id    = "byoc-96357063-a972-4410-a7a9-5e56105ae393",
+    mean  = "ACD",
+    lower = "UC_Q05",
+    upper = "UC_Q95"
+  ),
+  canopy_cover = list(
+    id    = "byoc-ed6d973a-7449-4721-bf8f-c465fc4382e4",
+    mean  = "CC",
+    lower = "UC_Q05",
+    upper = "UC_Q95"
+  ),
+  canopy_height = list(
+    id    = "byoc-dea673eb-421b-4e91-bd5c-7bbac6be022c",
+    mean  = "CH",
+    lower = "UC_Q05",
+    upper = "UC_Q95"
+  )
 )
 
 # -------------------------- 2. AUTH ------------------------------------------
@@ -74,6 +97,11 @@ aoi <- pts_sf |>
 
 aoi$id <- pts_sf$id   # carry the identifier through
 
+# Check where your locations are projecting
+leaflet() |>   addProviderTiles(providers$Esri.WorldImagery) |>   addPolygons(data = aoi, color = "#FF6600", fillOpacity = 0.3,
+                                                                              popup = aoi$id) 
+
+
 # -------------------------- 5. HELPERS ---------------------------------------
 
 sf_to_geojson_coords <- function(polygon_sf) {
@@ -81,21 +109,34 @@ sf_to_geojson_coords <- function(polygon_sf) {
   list(lapply(seq_len(nrow(m)), function(i) c(m[i, 1], m[i, 2])))
 }
 
-query_polygon_process <- function(polygon_sf, token, collection_id, band_name,
+query_polygon_process <- function(polygon_sf, token, collection_id, bands,
                                   time_from, time_to) {
-
+  
+  # `bands` is a named character vector, e.g.
+  #   c(mean = "ACD", lower = "ACD_LB", upper = "ACD_UB")
+  # NULL entries (no uncertainty bands) are dropped silently.
+  bands  <- bands[!vapply(bands, is.null, logical(1))]
+  bands  <- bands[nzchar(bands)]
+  n      <- length(bands)
+  if (n == 0) stop("No bands requested.")
+  
+  # Build the JS arrays for the evalscript dynamically.
+  inputs  <- paste0('"', c(unname(bands), "dataMask"), '"', collapse = ", ")
+  returns <- paste0("sample.", unname(bands), collapse = ", ")
+  nans    <- paste0(rep("NaN", n), collapse = ", ")
+  
   evalscript <- sprintf('//VERSION=3
 function setup() {
   return {
-    input: ["%s", "dataMask"],
-    output: { bands: 1, sampleType: "FLOAT32" }
+    input: [%s],
+    output: { bands: %d, sampleType: "FLOAT32" }
   };
 }
 function evaluatePixel(sample) {
-  if (sample.dataMask == 1) { return [sample.%s]; }
-  return [NaN];
-}', band_name, band_name)
-
+  if (sample.dataMask == 1) { return [%s]; }
+  return [%s];
+}', inputs, n, returns, nans)
+  
   body <- list(
     input = list(
       bounds = list(
@@ -115,7 +156,7 @@ function evaluatePixel(sample) {
     ),
     evalscript = evalscript
   )
-
+  
   response <- POST(
     "https://services.sentinel-hub.com/api/v1/process",
     add_headers(Authorization  = paste("Bearer", token),
@@ -123,41 +164,70 @@ function evaluatePixel(sample) {
                 `Content-Type` = "application/json"),
     body = body, encode = "json"
   )
-
-  if (status_code(response) == 200) {
-    tmp <- tempfile(fileext = ".tif")
-    writeBin(content(response, "raw"), tmp)
-    r    <- rast(tmp)
-    vals <- values(r)
-    vals <- vals[!is.nan(vals)]   # keep all real values, drop only masked pixels
-    unlink(tmp)
-    if (length(vals) > 0) return(mean(vals, na.rm = TRUE))
-  } else {
+  
+  # Default return — one NA per requested band, named so the caller can still
+  # bind columns even when the query failed.
+  empty <- setNames(rep(NA_real_, n), names(bands))
+  
+  if (status_code(response) != 200) {
     message("Error: ", content(response, "text"))
+    return(empty)
   }
-  NA_real_
+  
+  tmp <- tempfile(fileext = ".tif")
+  writeBin(content(response, "raw"), tmp)
+  r    <- rast(tmp)
+  
+  # Hard-crop to the actual polygon. Sentinel Hub returns a 64×64 grid covering
+  # the polygon's bounding box, so the corners of that grid aren't inside the
+  # buffer (or shapefile polygon). mask() sets out-of-polygon pixels to NA so
+  # they're excluded from colMeans below. CRSs are already aligned — we read
+  # the TIFF in EPSG:4326 and the polygon_sf is also in EPSG:4326.
+  r <- mask(r, vect(polygon_sf))
+  
+  # `vals` is a pixels-by-bands matrix. The evalscript masks all bands together
+  # via dataMask, so a row is either all-valid or all-NaN.
+  vals <- values(r)
+  unlink(tmp)
+  
+  if (!is.matrix(vals)) vals <- matrix(vals, ncol = 1)
+  keep <- !is.nan(vals[, 1])
+  if (!any(keep)) return(empty)
+  
+  # Take the mean values
+  means <- colMeans(vals[keep, , drop = FALSE], na.rm = TRUE)
+  setNames(means, names(bands))
 }
+
 
 # -------------------------- 6. LOOP OVER SITES × COLLECTIONS -----------------
 
 results <- do.call(rbind, lapply(seq_len(nrow(aoi)), function(i) {
   message(sprintf("Processing %s (%d/%d)", aoi$id[i], i, nrow(aoi)))
-
+  
   cent <- st_coordinates(st_centroid(aoi[i, ]))
   row  <- data.frame(id  = aoi$id[i],
                      lon = cent[1, 1],
-                     lat = cent[1, 2])
-
+                     lat = cent[1, 2],
+                     row.names = i)
+  
   for (m in names(collections)) {
-    col <- collections[[m]]
-    row[[paste0(m, "_mean")]] <- query_polygon_process(
+    col   <- collections[[m]]
+    means <- query_polygon_process(
       polygon_sf    = aoi[i, ],
       token         = bearer_token,
       collection_id = col$id,
-      band_name     = col$band,
+      bands         = c(mean  = col$mean,
+                        lower = col$lower,
+                        upper = col$upper),
       time_from     = time_from,
       time_to       = time_to
     )
+    # `means` is a named vector — e.g. mean, lower, upper. Fan out to columns
+    # like biomass_mean, biomass_lower, biomass_upper.
+    for (nm in names(means)) {
+      row[[paste0(m, "_", nm)]] <- unname(means[nm])
+    }
     Sys.sleep(0.2)
   }
   row
@@ -169,8 +239,11 @@ write.csv(results, "data/example_points_results.csv", row.names = FALSE)
 # -------------------------- 7. SANITY-CHECK MAP ------------------------------
 
 results$popup <- sprintf(
-  "<b>%s</b><br>Biomass: %.1f Mg/ha<br>Canopy cover: %.1f %%<br>Canopy height: %.1f m",
-  results$id, results$biomass_mean, results$canopy_cover_mean, results$canopy_height_mean
+  "<b>%s</b><br>Biomass: %.1f Mg/ha [%.1f – %.1f]<br>Canopy cover: %.1f %% [%.1f – %.1f]<br>Canopy height: %.1f m [%.1f – %.1f]",
+  results$id,
+  results$biomass_mean,       results$biomass_lower,       results$biomass_upper,
+  results$canopy_cover_mean,  results$canopy_cover_lower,  results$canopy_cover_upper,
+  results$canopy_height_mean, results$canopy_height_lower, results$canopy_height_upper
 )
 
 leaflet() |>

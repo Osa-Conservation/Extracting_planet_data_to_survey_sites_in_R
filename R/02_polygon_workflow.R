@@ -61,6 +61,10 @@ if (any(st_geometry_type(plots_sf) == "MULTIPOLYGON")) {
   plots_sf <- st_cast(plots_sf, "POLYGON")
 }
 
+# Plot your shapefile to check it all makes sense
+leaflet() |>   addProviderTiles(providers$Esri.WorldImagery) |>   addPolygons(data = plots_sf, color = "#FF6600", fillOpacity = 0.3,
+                                                                              popup = plots_sf$id) 
+
 # -------------------------- 4. HELPERS ---------------------------------------
 
 sf_to_geojson_coords <- function(polygon_sf) {

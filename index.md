@@ -3,8 +3,6 @@ layout: default
 title: Accessing Planet data in R
 ---
 
-# Accessing Planet data in R
-
 *A 15-minute primer by the Osa Conservation science team.*
 
 By the end of this you'll be able to pull Planet Forest Diligence values (above-ground carbon density, canopy cover, canopy height, and their associated error) for your own field sites in R - whether those sites are points (e.g. camera traps, bird stations) or polygons (e.g. restoration plots, conservation easements)! You don't download imagery - you'll only pull the summary statistics you need, so the workflow scales to hundreds of sites easily!

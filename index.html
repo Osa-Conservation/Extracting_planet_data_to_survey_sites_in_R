@@ -353,76 +353,50 @@ display: none;
 </div>
 
 
-<div id="accessing-planet-data-in-r" class="section level1">
-<h1>Accessing Planet data in R</h1>
-<p><em>A 15-minute primer for the Osa Conservation science
-team.</em></p>
-<p>By the end of this you’ll know how to pull <strong>Planet Forest
-Carbon Diligence</strong> values — aboveground carbon density, canopy
-cover, canopy height — for your own field sites, whether those sites are
-points (e.g. camera traps, bird stations) or polygons (e.g. restoration
-plots, conservation easements). You won’t download imagery; you’ll only
-pull the summary statistics you need, so the workflow scales to hundreds
-of sites without flooding your disk.</p>
-<p>The full code lives in <a href="https://github.com/YOUR-GH-USERNAME/osa-planet-r-tutorial/tree/main/R"><code>R/</code></a>.
+<p><em>A 15-minute primer by the Osa Conservation science team.</em></p>
+<p>By the end of this you’ll be able to pull Planet Forest Diligence
+values (above-ground carbon density, canopy cover, canopy height, and
+their associated error) for your own field sites in R - whether those
+sites are points (e.g. camera traps, bird stations) or polygons
+(e.g. restoration plots, conservation easements)! You don’t download
+imagery - you’ll only pull the summary statistics you need, so the
+workflow scales to hundreds of sites easily!</p>
+<p>The full code lives in <a href="https://github.com/Osa-Conservation/Extracting_planet_data_to_survey_sites_in_R/tree/main/R"><code>R/</code></a>.
 This page walks through the logic.</p>
 <hr />
-<div id="why-this-exists" class="section level2">
-<h2>Why this exists</h2>
-<p>Field-based ecology asks the same question repeatedly: <em>what does
-the forest look like at my sites?</em> Traditionally that meant either
-(a) buying imagery and processing it yourself, or (b) querying Google
-Earth Engine through Python.</p>
-<p>Planet’s Forest Carbon Diligence collection — delivered through the
-Sentinel Hub API — gives you a third option that fits naturally into an
-R workflow:</p>
-<ul>
-<li><strong>Annual</strong> rasters of biomass (ACD), canopy cover (CC),
-canopy height (CH) for the whole tropics.</li>
-<li>A <strong>Process API</strong> that lets you request just the pixels
-covering your AOI.</li>
-<li>No image downloads needed if all you want is a zonal summary.</li>
-</ul>
-<p>That said, this is one workflow among several, with trade-offs worth
-knowing about upfront:</p>
-<ul>
-<li><strong>Sentinel Hub Statistical API</strong> — purpose-built for
-time series over a polygon. Returns mean/stdev/percentiles per time
-interval directly. Better than this template if you mainly want
-change-over-time per AOI; uses the same auth + collections.</li>
-<li><strong>Google Earth Engine</strong> — vast catalogue beyond Planet,
-free for non-commercial use, but requires Python or the JS code editor
-and a separate account.</li>
-<li><strong>Manual download + local processing</strong> — most control,
-most disk and processing time.</li>
-</ul>
-<p>This tutorial uses the <strong>Process API</strong> because it gives
-full control over how the reducer works (masking, no-data handling,
-custom thresholds) and slots into existing R workflows with minimal new
-dependencies.</p>
+<p><em>Important point</em>: this code uses the Sentinal Process API,
+but the Statistical API is purpose-built for generating time series
+within polygons. It returns mean/stdev/percentiles per time interval
+directly. It is probably better than this template if you mainly want
+change-over-time - but the underlying mechanisms are pretty much the
+same!</p>
 <hr />
-</div>
-<div id="before-the-session-5-minutes-of-setup" class="section level2">
-<h2>Before the session — 5 minutes of setup</h2>
-<p>You’ll need three things:</p>
+<div id="setup" class="section level2">
+<h2>Setup</h2>
+<p>Top run this for your own sites/locations you will need:</p>
 <div id="a-sentinel-hub-account-with-an-oauth-client" class="section level3">
 <h3>1. A Sentinel Hub account with an OAuth client</h3>
 <p>Sign up at <a href="https://www.sentinel-hub.com/">sentinel-hub.com</a>. From the user
-settings page, create an <strong>OAuth client</strong> and copy the
-<code>client_id</code> and <code>client_secret</code> somewhere
-safe.</p>
+settings page, create an <em>OAuth client</em>(go to <a href="https://insights.planet.com/account/" class="uri">https://insights.planet.com/account/</a> then the OAuth
+client box and “Create new”) then copy the <code>client_id</code> and
+<code>client_secret</code> somewhere safe. It is a good idea to set your
+credentials to expire after a certain time period just in-case they get
+exposed.</p>
 </div>
-<div id="credentials-in-.renviron-not-in-your-scripts" class="section level3">
-<h3>2. Credentials in <code>~/.Renviron</code> — <em>not</em> in your
+<div id="credentials-in-.renviron---not-in-your-scripts" class="section level3">
+<h3>2. Credentials in <code>~/.Renviron</code> - <em>not</em> in your
 scripts</h3>
-<p>This matters. Anything you commit to GitHub is effectively public
-forever. Open <code>~/.Renviron</code> with:</p>
+<p>If you are going to work in github this matters! Anything you commit
+to a GitHub repositiory is effectively public forever. Even if you are
+just going to work locally it is still a good idea to look after
+passwords and credentials.</p>
+<p>Open <code>~/.Renviron</code> with:</p>
 <pre class="r"><code>usethis::edit_r_environ()</code></pre>
 <p>…and add two lines:</p>
 <pre><code>SH_CLIENT_ID=your-client-id-here
 SH_CLIENT_SECRET=your-client-secret-here</code></pre>
-<p>Save, restart R. The scripts here read them with
-<code>Sys.getenv()</code>, so they never appear in code. The
+<p>Save, restart R. The scripts associated here then read them with
+<code>Sys.getenv()</code>, so they never appear in code! The
 <code>.gitignore</code> excludes <code>.Renviron</code> so it can’t
 accidentally be committed.</p>
 </div>
@@ -434,8 +408,8 @@ to confirm everything works before the session.</p>
 <hr />
 </div>
 </div>
-<div id="the-whole-workflow-in-one-picture" class="section level2">
-<h2>The whole workflow, in one picture</h2>
+<div id="the-whole-workflow-in-a-nutshell" class="section level2">
+<h2>The whole workflow, in a nutshell:</h2>
 <pre><code>         your sites (points or polygons)
                       │
                       ▼
@@ -464,9 +438,10 @@ boxes.</p>
 </div>
 <div id="step-1-authenticate" class="section level2">
 <h2>Step 1 — Authenticate</h2>
-<p>The Sentinel Hub API uses OAuth2 client credentials. You swap your
-<code>client_id</code> and <code>client_secret</code> for a short-lived
-bearer token (~1 hour), then attach that token to every API call.</p>
+<p>The Sentinel Hub API uses OAuth2 client credentials. The code below
+wsaps your <code>client_id</code> and <code>client_secret</code> for a
+short-lived bearer token (~1 hour), then attaches that token to every
+API call.</p>
 <pre class="r"><code>library(httr)
 
 get_token &lt;- function(client_id, client_secret) {
@@ -483,33 +458,45 @@ get_token &lt;- function(client_id, client_secret) {
 
 bearer_token &lt;- get_token(Sys.getenv(&quot;SH_CLIENT_ID&quot;),
                           Sys.getenv(&quot;SH_CLIENT_SECRET&quot;))</code></pre>
-<p>If you’re doing a long run (hundreds of sites), the token may expire
-mid-run. Easiest fix: call <code>get_token()</code> again periodically,
-or wrap the query so a <code>401</code> triggers a refresh.</p>
+<p>If you’re doing a reeaaally long run (hundreds of sites), the token
+may expire mid-run. One fix might be to call <code>get_token()</code>
+again periodically.</p>
 <hr />
 </div>
-<div id="step-2-points-workflow" class="section level2">
-<h2>Step 2 — Points workflow</h2>
-<p><em>Full script: <a href="https://github.com/YOUR-GH-USERNAME/osa-planet-r-tutorial/blob/main/R/01_points_workflow.R"><code>R/01_points_workflow.R</code></a></em></p>
-<p>You have a CSV like this:</p>
+<div id="step-2-points-workflow-a-single-value-per-location" class="section level2">
+<h2>Step 2 — Points workflow (a single value per location)</h2>
+<p><em>Full script: <a href="https://github.com/Osa-Conservation/Extracting_planet_data_to_survey_sites_in_R/blob/main/R/01_points_workflow.R"><code>R/01_points_workflow.R</code></a></em></p>
+<p>You should start with a .csv of you sites which looks something like
+this:</p>
 <pre><code>id,lon,lat
 OSA_01,-83.5810,8.3870
 OSA_02,-83.5905,8.3920
 ...</code></pre>
-<p>Read it, declare its CRS, and buffer each point into a circular AOI.
-The buffer must happen in a <strong>projected</strong> CRS so the radius
-is in real metres — for the Osa Peninsula, UTM 17N (EPSG:32617).</p>
+<p>Read it into R, specify its CRS, and buffer each point into a
+circular AOI. The buffer must happen in a projected CRS so the radius is
+in real metres - for the Osa Peninsula I use UTM 17N (EPSG:32617).</p>
 <pre class="r"><code>library(sf)
 
+# Read in your locations
 pts &lt;- read.csv(&quot;data/example_points.csv&quot;)
 pts_sf &lt;- st_as_sf(pts, coords = c(&quot;lon&quot;, &quot;lat&quot;), crs = 4326)
 
-buffer_radius &lt;- 100  # metres
+# Specify your buffer and create shapefiles
+buffer_radius &lt;- 50  # metres
 
 aoi &lt;- pts_sf |&gt;
   st_transform(32617) |&gt;     # UTM 17N — change for your region
   st_buffer(buffer_radius) |&gt;
-  st_transform(4326)</code></pre>
+  st_transform(4326)
+
+# Time window. Forest Carbon Diligence is annual; give a window that spans the
+# year(s) you want - here we use 2024.
+time_from &lt;- &quot;2024-01-01T00:00:00Z&quot;
+time_to   &lt;- &quot;2024-12-31T23:59:59Z&quot;</code></pre>
+<p><strong>Check your survey locations!</strong> If I has a penny for
+every time a collaborator gave me a location projecting on the wrong
+continent/ocean…</p>
+<pre class="r"><code>leaflet() |&gt;   addProviderTiles(providers$Esri.WorldImagery) |&gt;   addPolygons(data = aoi, color = &quot;#FF6600&quot;, fillOpacity = 0.3, popup = aoi$id) </code></pre>
 <p>Each row of <code>aoi</code> is now a polygon ready to send to the
 API. The query function takes one polygon + one collection ID + a time
 window and returns the mean over that AOI:</p>
@@ -566,22 +553,27 @@ function evaluatePixel(sample) {
 }</code></pre>
 <p>Three things worth understanding in that block:</p>
 <ul>
+<li><strong>IMPORTANT POINT 1:</strong>
+<strong><code>vals[!is.nan(vals)]</code></strong> drops masked /
+out-of-footprint pixels - this might biases the mean upward by excluding
+genuinely cleared land. Keep zeros unless you have a band-specific
+reason to drop them!</li>
+<li><strong>IMPORTANT POINT 2:
+<code>width = 64, height = 64</code></strong> asks the server to return
+a 64×64 raster covering the AOI’s bounding box. For small AOIs this can
+oversample Forest Carbon’s 30 m pixels, which is fine for a mean. For a
+strict native-resolution read, swap for
+<code>resx = 0.0003, resy = 0.0003</code>.</li>
 <li><strong>The <code>evalscript</code></strong> is a small JavaScript
 snippet that runs on Sentinel Hub’s servers, on every pixel of every
 relevant scene. It returns the band value where
 <code>dataMask == 1</code> and <code>NaN</code> otherwise.</li>
-<li><strong><code>width = 64, height = 64</code></strong> asks the
-server to return a 64×64 raster covering the AOI’s bounding box. For
-small AOIs this oversamples Forest Carbon’s 30 m pixels, which is fine
-for a mean. For a strict native-resolution read, swap for
-<code>resx = 0.0003, resy = 0.0003</code>.</li>
-<li><strong><code>vals[!is.nan(vals)]</code></strong> drops masked /
-out-of-footprint pixels. Earlier versions of this template also dropped
-zeros, but that biases the mean upward by silently excluding genuinely
-cleared land. Keep zeros unless you have a band-specific reason to drop
-them.</li>
 </ul>
-<p>Then loop:</p>
+<p>Then specify the products you want - swapping the ids for codes in
+your collection (<a href="https://insights.planet.com/data/collections/#/?tab=planet">Data
+Collections ・ Planet Insights Platform</a>). Note if you want to create
+a new collection (e.g. if updated Forest Diligence variables are release
+then use this tool - <a href="https://insights.planet.com/data/subscriptions/new" class="uri">https://insights.planet.com/data/subscriptions/new</a>)</p>
 <pre class="r"><code>collections &lt;- list(
   biomass       = list(id = &quot;byoc-XXXXXXXX-...&quot;, band = &quot;ACD&quot;),
   canopy_cover  = list(id = &quot;byoc-XXXXXXXX-...&quot;, band = &quot;CC&quot;),
@@ -596,28 +588,28 @@ results &lt;- do.call(rbind, lapply(seq_len(nrow(aoi)), function(i) {
     row[[paste0(m, &quot;_mean&quot;)]] &lt;- query_polygon_process(
       polygon_sf = aoi[i, ], token = bearer_token,
       collection_id = col$id, band_name = col$band,
-      time_from = &quot;2023-01-01T00:00:00Z&quot;,
-      time_to   = &quot;2023-12-31T23:59:59Z&quot;)
+      time_from = time_from,
+      time_to   = time_to)
     Sys.sleep(0.2)
   }
   row
 }))</code></pre>
-<p>One tidy row per site, one column per metric. Map it to
-sanity-check:</p>
+<p>One tidy row per site, one column per metric. Map it again to check
+it looks reasonable!</p>
 <pre class="r"><code>library(leaflet)
 leaflet() |&gt;
   addProviderTiles(providers$Esri.WorldImagery) |&gt;
   addPolygons(data = aoi, color = &quot;#FF6600&quot;, fillOpacity = 0.3) |&gt;
   addCircleMarkers(data = results, ~lon, ~lat, radius = 5, color = &quot;red&quot;)</code></pre>
-<p><strong>Always do this</strong> — a single wrong CRS or transposed
-lon/lat jumps out instantly on satellite imagery.</p>
+<p><strong>Always do this mapping!</strong> the number of times I have
+worked with data people didnt map first…</p>
 <hr />
 </div>
 <div id="step-3-polygon-workflow-with-a-time-series" class="section level2">
 <h2>Step 3 — Polygon workflow with a time series</h2>
 <p><em>Full script: <a href="https://github.com/YOUR-GH-USERNAME/osa-planet-r-tutorial/blob/main/R/02_polygon_workflow.R"><code>R/02_polygon_workflow.R</code></a></em></p>
-<p>If you already have polygons (a shapefile of plots), you skip
-buffering and feed them straight in. The same
+<p>If you already have polygons (e.g. a shapefile of your plots), you
+skip buffering and feed them straight in. The same
 <code>query_polygon_process()</code> function works — only the loop
 changes, because now you want one value per plot <strong>×
 year</strong>.</p>
@@ -634,7 +626,13 @@ time_periods &lt;- data.frame(
   year = years,
   from = sprintf(&quot;%d-01-01T00:00:00Z&quot;, years),
   to   = sprintf(&quot;%d-12-31T23:59:59Z&quot;, years)
-)</code></pre>
+)
+
+# Remember to plot your polygons before extracting the data!
+
+
+
+</code></pre>
 <p>Nested loop — plots × years × collections — produces a long data
 frame:</p>
 <pre class="r"><code>ts &lt;- data.frame()
@@ -683,17 +681,17 @@ leaflet(plots_map) |&gt;
   addLegend(pal = pal, values = ~delta, title = &quot;Δ Biomass (Mg/ha)&quot;)</code></pre>
 <hr />
 </div>
-<div id="adapting-this-for-your-own-work-quick-checklist" class="section level2">
-<h2>Adapting this for your own work — quick checklist</h2>
+<div id="summary-of-how-to-adapt-this-for-your-own-work" class="section level2">
+<h2>Summary of how to adapt this for your own work</h2>
 <ol style="list-style-type: decimal">
 <li><strong>Credentials</strong> in <code>~/.Renviron</code>, never in
-scripts.</li>
+the script.</li>
 <li><strong>Collection IDs</strong> swapped to your own from <a href="https://insights.planet.com/data/collections/" class="uri">https://insights.planet.com/data/collections/</a>.</li>
 <li><strong>Source CRS</strong> matches how your coordinates were
 recorded.</li>
-<li><strong>Buffer CRS</strong> is a local UTM zone (true metres, not
-Web Mercator).</li>
-<li><strong>Time window</strong> matches the annual layer(s) you
+<li><strong>Buffer CRS - points only -</strong> use a local UTM zone
+(true metres, not Web Mercator).</li>
+<li><strong>Time window</strong> to match the annual layer(s) you
 want.</li>
 <li><strong>ID column</strong> renamed to whatever the scripts expect
 (<code>id</code> for points, <code>plot_id</code> for polygons), or
@@ -703,27 +701,14 @@ update the scripts.</li>
 </div>
 <div id="going-further" class="section level2">
 <h2>Going further</h2>
-<p>A few obvious extensions, in roughly increasing effort:</p>
+<p>Some future potential tweaks:</p>
 <ul>
-<li><strong>Statistical API instead of Process API</strong> for cleaner
-multi-year time series — the server does the reducer, you just parse
-JSON.</li>
-<li><strong>Strict polygon mask</strong> before averaging. Right now
-<code>terra::values()</code> includes bounding-box pixels not fully
-covered by the polygon; <code>terra::mask()</code> against the AOI fixes
-this if your sites are small.</li>
-<li><strong>Retry on token expiry</strong> — wrap
-<code>query_polygon_process</code> so a <code>401</code>
-re-authenticates and retries.</li>
+<li><strong>Visualize uncertainty</strong> - make some plots to
+visualise the uncertainty for each value</li>
 <li><strong>Parallelise across sites</strong> with
-<code>future.apply::future_lapply()</code> to cut runtime on hundreds of
-plots.</li>
-<li><strong>Add a Sentinel-2 NDVI workflow</strong> alongside Forest
-Carbon for a finer-temporal signal between annual updates.</li>
+<code>future.apply::future_lapply()</code> - would cut runtime on
+hundreds of plots!</li>
 </ul>
-<p>If you build something on top, please send a PR or open an issue —
-happy to add additional recipes here.</p>
-</div>
 </div>
 
 

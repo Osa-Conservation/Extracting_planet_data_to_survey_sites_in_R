@@ -55,32 +55,7 @@ That's it. Run [`R/00_setup.R`](https:///github.com/Osa-Conservation/Extracting_
 
 ## The whole workflow, in a nutshell:
 
-```         
-         your sites (points or polygons)
-                      │
-                      ▼
-            ┌─────────────────────┐
-            │  buffer if points   │  ← skip for polygon shapefiles
-            └──────────┬──────────┘
-                       ▼
-        ┌──────────────────────────────┐
-        │  Sentinel Hub Process API    │
-        │  request a small TIFF per    │
-        │  AOI × collection × period   │
-        └──────────────┬───────────────┘
-                       ▼
-            ┌──────────────────────┐
-            │  read with terra,    │
-            │  drop NaN, take mean │
-            └──────────┬───────────┘
-                       ▼
-              tidy data frame
-              one row per site (× year)
-                       ▼
-              ggplot / leaflet
-```
-
-Everything from here on is just R plumbing connecting those boxes.
+<img src="https://raw.githubusercontent.com/Osa-Conservation/Extracting_planet_data_to_survey_sites_in_R/refs/heads/main/figures/workflow.png" alt="" height="400">
 
 ------------------------------------------------------------------------
 
@@ -338,7 +313,7 @@ leaflet(plots_map) |>
 
 ------------------------------------------------------------------------
 
-## Summary of how to adapt this for your own work
+## Steps to adapt this for your own work
 
 1.  **Credentials** in `~/.Renviron`, never in the script.
 2.  **Collection IDs** swapped to your own from <https://insights.planet.com/data/collections/>.
@@ -347,11 +322,3 @@ leaflet(plots_map) |>
 5.  **Time window** to match the annual layer(s) you want.
 6.  **ID column** renamed to whatever the scripts expect (`id` for points, `plot_id` for polygons), or update the scripts.
 
-------------------------------------------------------------------------
-
-## Going further
-
-Some future potential tweaks:
-
-- **Visualize uncertainty** - make some plots to visualise the uncertainty for each value
-- **Parallelise across sites** with `future.apply::future_lapply()` - would cut runtime on hundreds of plots!

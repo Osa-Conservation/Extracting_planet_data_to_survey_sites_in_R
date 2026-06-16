@@ -1,4 +1,4 @@
-# =============================================================================
+# =======================================
 # 01_points_workflow.R
 #
 # Workflow for POINT data:
@@ -8,8 +8,8 @@
 #      Process API and compute the mean over each AOI.
 #   4. Save to CSV and plot on a leaflet map.
 #
-# Assumes ~/.Renviron has SH_CLIENT_ID and SH_CLIENT_SECRET set.
-# =============================================================================
+# NOTE!!! This assumes ~/.Renviron has SH_CLIENT_ID and SH_CLIENT_SECRET set. See the setup doc!
+# ====================================
 
 library(httr)
 library(sf)
@@ -45,13 +45,13 @@ collections <- list(
     upper = "UC_Q95"
   ),
   canopy_cover = list(
-    id    = "byoc-ed6d973a-7449-4721-bf8f-c465fc4382e4",
+    id    = "byoc-553728e5-7931-4316-8f31-424d53cce475",
     mean  = "CC",
     lower = "UC_Q05",
     upper = "UC_Q95"
   ),
   canopy_height = list(
-    id    = "byoc-dea673eb-421b-4e91-bd5c-7bbac6be022c",
+    id    = "byoc-6a7b70e8-f001-4407-88ed-272069c09dab",
     mean  = "CH",
     lower = "UC_Q05",
     upper = "UC_Q95"
@@ -99,7 +99,17 @@ aoi$id <- pts_sf$id   # carry the identifier through
 
 # Check where your locations are projecting
 leaflet() |>   addProviderTiles(providers$Esri.WorldImagery) |>   addPolygons(data = aoi, color = "#FF6600", fillOpacity = 0.3,
-                                                                              popup = aoi$id) 
+                                                                              label = aoi$id,
+                                                                              labelOptions = labelOptions(
+                                                                                noHide = TRUE,          # Makes the label permanently visible
+                                                                                direction = "center",   # Centers text on the polygon centroid
+                                                                                textOnly = TRUE,        # Removes the default white background box
+                                                                                style = list(
+                                                                                  "color" = "black",
+                                                                                  "font-weight" = "bold",
+                                                                                  "font-size" = "12px"
+                                                                                ))
+                                                                              ) 
 
 
 # -------------------------- 5. HELPERS ---------------------------------------
@@ -205,7 +215,7 @@ function evaluatePixel(sample) {
 results <- do.call(rbind, lapply(seq_len(nrow(aoi)), function(i) {
   message(sprintf("Processing %s (%d/%d)", aoi$id[i], i, nrow(aoi)))
   
-  cent <- st_coordinates(st_centroid(aoi[i, ]))
+  cent <- st_coordinates(suppressWarnings(st_centroid(aoi[i, ])))
   row  <- data.frame(id  = aoi$id[i],
                      lon = cent[1, 1],
                      lat = cent[1, 2],

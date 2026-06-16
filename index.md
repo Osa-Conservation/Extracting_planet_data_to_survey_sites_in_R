@@ -5,9 +5,11 @@ title: Accessing Planet data in R
 
 *A 15-minute primer by the Osa Conservation science team.*
 
-By the end of this you'll be able to pull Planet Forest Diligence values (above-ground carbon density, canopy cover, canopy height, and their associated error) for your own field sites in R - whether those sites are points (e.g. camera traps, bird stations) or polygons (e.g. restoration plots, conservation easements)! You don't download imagery - you'll only pull the summary statistics you need, so the workflow scales to hundreds of sites easily!
+By the end of this you'll be able to pull Planet Forest Diligence values (above-ground carbon density, canopy cover, canopy height, and their associated error) for your own field sites in R - whether those sites are points (e.g. camera traps, bird stations) or polygons (e.g. restoration plots, conservation easements)! You don't permenantly download imagery - you'll only pull the summary statistics you need, so the workflow scales to hundreds of sites easily!
 
-The three R scripts live in [`the R/ folder`](https://github.com/Osa-Conservation/Extracting_planet_data_to_survey_sites_in_R/tree/main/R). This page walks an overview of the process.
+<img src="https://raw.githubusercontent.com/Osa-Conservation/Extracting_planet_data_to_survey_sites_in_R/refs/heads/main/figures/banner_figure.png" height="400"/>
+
+The three R scripts (setup, points and polygons) live in [`the R/ folder`](https://github.com/Osa-Conservation/Extracting_planet_data_to_survey_sites_in_R/tree/main/R). This page walks an overview of the process.
 
 ------------------------------------------------------------------------
 
@@ -16,9 +18,10 @@ The three R scripts live in [`the R/ folder`](https://github.com/Osa-Conservatio
 ------------------------------------------------------------------------
 
 ## Setup
-The R code to set up you session leaves here: [`R/00_setup.R`](https://github.com/Osa-Conservation/Extracting_planet_data_to_survey_sites_in_R/blob/main/R/00_setup.R)
 
-Top run this for your own sites/locations you will need:
+The R code to set up your session leaves here: [`R/00_setup.R`](https://github.com/Osa-Conservation/Extracting_planet_data_to_survey_sites_in_R/blob/main/R/00_setup.R)
+
+To run this for your own sites/locations you will need:
 
 ### 1. A Sentinel Hub account with an OAuth client
 
@@ -26,7 +29,7 @@ Sign up at [sentinel-hub.com](https://www.sentinel-hub.com/). From the user sett
 
 ### 2. Credentials in `~/.Renviron` - *not* in your scripts
 
-If you are going to work in github this matters! Anything you commit to a GitHub repositiory is effectively public forever. Even if you are just going to work locally it is still a good idea to look after passwords and credentials.
+If you are going to work locally, ignore this. If you are going to work on github this is very important! Anything you commit to a GitHub repository is effectively public forever. Even if you are just going to work locally it is still a good idea to look after passwords and credentials.
 
 Open `~/.Renviron` with:
 
@@ -53,9 +56,9 @@ That's it. Run [`R/00_setup.R`](https:///github.com/Osa-Conservation/Extracting_
 
 ------------------------------------------------------------------------
 
-## The whole workflow, in a nutshell:
+## The workflow, in a nutshell:
 
-<img src="https://raw.githubusercontent.com/Osa-Conservation/Extracting_planet_data_to_survey_sites_in_R/refs/heads/main/figures/workflow.png" alt="" height="400">
+<img src="https://raw.githubusercontent.com/Osa-Conservation/Extracting_planet_data_to_survey_sites_in_R/refs/heads/main/figures/workflow.png" height="400"/>
 
 ------------------------------------------------------------------------
 
@@ -84,7 +87,7 @@ bearer_token <- get_token(Sys.getenv("SH_CLIENT_ID"),
 
 ------------------------------------------------------------------------
 
-## Step 2 — Points workflow (a single value per location)
+## Step 2 — Points workflow (single values per location)
 
 *Full script: [`R/01_points_workflow.R`](https://github.com/Osa-Conservation/Extracting_planet_data_to_survey_sites_in_R/blob/main/R/01_points_workflow.R)*
 
@@ -120,11 +123,13 @@ time_from <- "2024-01-01T00:00:00Z"
 time_to   <- "2024-12-31T23:59:59Z"
 ```
 
-**Check your survey locations!** If I has a penny for every time a collaborator gave me a location projecting on the wrong continent/ocean...
+**Check your survey locations!** If I had a penny for every time a collaborator gave me a location projecting on the wrong continent or in the ocean...
 
 ``` r
 leaflet() |>   addProviderTiles(providers$Esri.WorldImagery) |>   addPolygons(data = aoi, color = "#FF6600", fillOpacity = 0.3, popup = aoi$id) 
 ```
+
+<img src="https://raw.githubusercontent.com/Osa-Conservation/Extracting_planet_data_to_survey_sites_in_R/refs/heads/main/figures/points_check.png" height="400"/>
 
 Each row of `aoi` is now a polygon ready to send to the API. The query function takes one polygon + one collection ID + a time window and returns the mean over that AOI:
 
@@ -134,17 +139,30 @@ sf_to_geojson_coords <- function(polygon_sf) {
   list(lapply(seq_len(nrow(m)), function(i) c(m[i, 1], m[i, 2])))
 }
 
-query_polygon_process <- function(polygon_sf, token, collection_id, band_name,
+query_polygon_process <- function(polygon_sf, token, collection_id, bands,
                                   time_from, time_to) {
+
+  # `bands` is a named vector, e.g. c(mean="ACD", lower="UC_Q05", upper="UC_Q95")
+  # NULL entries (collections without uncertainty bands) are dropped silently.
+  bands  <- bands[!vapply(bands, is.null, logical(1))]
+  bands  <- bands[nzchar(bands)]
+  n      <- length(bands)
+  if (n == 0) stop("No bands requested.")
+
+  # Build the evalscript arrays dynamically from the requested bands.
+  inputs  <- paste0('"', c(unname(bands), "dataMask"), '"', collapse = ", ")
+  returns <- paste0("sample.", unname(bands), collapse = ", ")
+  nans    <- paste0(rep("NaN", n), collapse = ", ")
+
   evalscript <- sprintf('//VERSION=3
 function setup() {
-  return { input: ["%s", "dataMask"],
-           output: { bands: 1, sampleType: "FLOAT32" } };
+  return { input: [%s],
+           output: { bands: %d, sampleType: "FLOAT32" } };
 }
 function evaluatePixel(sample) {
-  if (sample.dataMask == 1) { return [sample.%s]; }
-  return [NaN];
-}', band_name, band_name)
+  if (sample.dataMask == 1) { return [%s]; }
+  return [%s];
+}', inputs, n, returns, nans)
 
   body <- list(
     input = list(
@@ -170,43 +188,76 @@ function evaluatePixel(sample) {
                                `Content-Type` = "application/json"),
                    body = body, encode = "json")
 
-  if (status_code(response) == 200) {
-    tmp <- tempfile(fileext = ".tif")
-    writeBin(content(response, "raw"), tmp)
-    vals <- values(rast(tmp))
-    vals <- vals[!is.nan(vals)]   # keep zeros, drop only masked pixels
-    unlink(tmp)
-    if (length(vals) > 0) return(mean(vals, na.rm = TRUE))
+  # One NA per requested band, named, so the caller can always bind columns.
+  empty <- setNames(rep(NA_real_, n), names(bands))
+  if (status_code(response) != 200) {
+    message("Error: ", content(response, "text"))
+    return(empty)
   }
-  NA_real_
+
+  tmp <- tempfile(fileext = ".tif")
+  writeBin(content(response, "raw"), tmp)
+  r <- rast(tmp)
+  r <- mask(r, vect(polygon_sf))   # hard-crop to the polygon (drop bbox corners)
+  vals <- values(r)
+  unlink(tmp)
+
+  # After mask(), out-of-polygon pixels are NA and in-polygon no-data is NaN.
+  # is.na() catches both, so we keep only genuine in-polygon values.
+  if (!is.matrix(vals)) vals <- matrix(vals, ncol = 1)
+  keep <- !is.na(vals[, 1])
+  if (!any(keep)) return(empty)
+
+  means <- colMeans(vals[keep, , drop = FALSE], na.rm = TRUE)
+  setNames(means, names(bands))
 }
 ```
 
 Three things worth understanding in that block:
 
-- **IMPORTANT POINT 1:** **`vals[!is.nan(vals)]`** drops masked / out-of-footprint pixels - this might biases the mean upward by excluding genuinely cleared land. Keep zeros unless you have a band-specific reason to drop them!
+- **IMPORTANT POINT 1:** **`vals[!is.nan(vals)]`** drops masked / out-of-footprint pixels - this might bias the mean upward by excluding genuinely cleared land. Keep zeros unless you have a band-specific reason to drop them!
 - **IMPORTANT POINT 2: `width = 64, height = 64`** asks the server to return a 64×64 raster covering the AOI's bounding box. For small AOIs this can oversample Forest Carbon's 30 m pixels, which is fine for a mean. For a strict native-resolution read, swap for `resx = 0.0003, resy = 0.0003`.
 - **The `evalscript`** is a small JavaScript snippet that runs on Sentinel Hub's servers, on every pixel of every relevant scene. It returns the band value where `dataMask == 1` and `NaN` otherwise.
 
-Then specify the products you want - swapping the ids for codes in your collection ([Data Collections ・ Planet Insights Platform](https://insights.planet.com/data/collections/#/?tab=planet)). Note if you want to create a new collection (e.g. if updated Forest Diligence variables are release then use this tool - <https://insights.planet.com/data/subscriptions/new>)
+Then specify the products you want - swapping the ids for codes in your collection ([Data Collections ・ Planet Insights Platform](https://insights.planet.com/data/collections/#/?tab=planet)). **Note** if you want to create a new collection (e.g. if updated Forest Diligence variables are released) then use this tool - <https://insights.planet.com/data/subscriptions/new>.
+
+<img src="https://raw.githubusercontent.com/Osa-Conservation/Extracting_planet_data_to_survey_sites_in_R/refs/heads/main/figures/band_selection.png" height="400"/>
 
 ``` r
 collections <- list(
-  biomass       = list(id = "byoc-XXXXXXXX-...", band = "ACD"),
-  canopy_cover  = list(id = "byoc-XXXXXXXX-...", band = "CC"),
-  canopy_height = list(id = "byoc-XXXXXXXX-...", band = "CH")
+  biomass = list(
+    id    = "byoc-96357063-a972-4410-a7a9-5e56105ae393",
+    mean  = "ACD",
+    lower = "UC_Q05",
+    upper = "UC_Q95"
+  ),
+  canopy_cover = list(
+    id    = "byoc-ed6d973a-7449-4721-bf8f-c465fc4382e4",
+    mean  = "CC",
+    lower = "UC_Q05",
+    upper = "UC_Q95"
+  ),
+  canopy_height = list(
+    id    = "byoc-dea673eb-421b-4e91-bd5c-7bbac6be022c",
+    mean  = "CH",
+    lower = "UC_Q05",
+    upper = "UC_Q95"
+  )
 )
 
 results <- do.call(rbind, lapply(seq_len(nrow(aoi)), function(i) {
   cent <- st_coordinates(st_centroid(aoi[i, ]))
   row  <- data.frame(id = aoi$id[i], lon = cent[1,1], lat = cent[1,2])
   for (m in names(collections)) {
-    col <- collections[[m]]
-    row[[paste0(m, "_mean")]] <- query_polygon_process(
+    col   <- collections[[m]]
+    means <- query_polygon_process(
       polygon_sf = aoi[i, ], token = bearer_token,
-      collection_id = col$id, band_name = col$band,
+      collection_id = col$id,
+      bands = c(mean = col$mean, lower = col$lower, upper = col$upper),
       time_from = time_from,
       time_to   = time_to)
+    # fan the named vector out into biomass_mean, biomass_lower, biomass_upper ...
+    for (nm in names(means)) row[[paste0(m, "_", nm)]] <- unname(means[nm])
     Sys.sleep(0.2)
   }
   row
@@ -223,7 +274,8 @@ leaflet() |>
   addCircleMarkers(data = results, ~lon, ~lat, radius = 5, color = "red")
 ```
 
-**Always do this mapping!** the number of times I have worked with data people didnt map first...
+<img src="https://raw.githubusercontent.com/Osa-Conservation/Extracting_planet_data_to_survey_sites_in_R/refs/heads/main/figures/points_biomass_output.png" height="400"/>
+
 
 ------------------------------------------------------------------------
 
@@ -253,7 +305,6 @@ time_periods <- data.frame(
 
 
 
-
 ```
 
 Nested loop — plots × years × collections — produces a long data frame:
@@ -264,11 +315,13 @@ for (i in seq_len(nrow(plots_sf))) {
   for (t in seq_len(nrow(time_periods))) {
     row <- data.frame(plot_id = plots_sf$id[i], year = time_periods$year[t])
     for (m in names(collections)) {
-      col <- collections[[m]]
-      row[[m]] <- query_polygon_process(
+      col   <- collections[[m]]
+      means <- query_polygon_process(
         plots_sf[i, ], bearer_token,
-        col$id, col$band,
+        col$id,
+        c(mean = col$mean, lower = col$lower, upper = col$upper),
         time_periods$from[t], time_periods$to[t])
+      for (nm in names(means)) row[[paste0(m, "_", nm)]] <- unname(means[nm])
     }
     ts <- rbind(ts, row)
   }
@@ -280,22 +333,32 @@ Reshape and plot:
 ``` r
 library(dplyr); library(tidyr); library(ggplot2)
 
+# split each column name (e.g. biomass_mean) into a metric and a statistic,
+# then widen so each row has mean/lower/upper for one plot x year x metric
 ts_long <- ts |>
-  pivot_longer(c(biomass, canopy_cover, canopy_height),
-               names_to = "metric", values_to = "value")
+  pivot_longer(
+    cols = -c(plot_id, year),
+    names_to = c("metric", "stat"),
+    names_pattern = "(.*)_(mean|lower|upper)"
+  ) |>
+  pivot_wider(names_from = stat, values_from = value)
 
-ggplot(ts_long, aes(year, value, colour = plot_id, group = plot_id)) +
+ggplot(ts_long, aes(year, mean, colour = plot_id, fill = plot_id, group = plot_id)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.15, colour = NA) +
   geom_line() + geom_point() +
   facet_wrap(~ metric, scales = "free_y", ncol = 1) +
   theme_minimal()
 ```
+
+[[[[[[NICE FIGURE]]]]]]]
 
 For a quick visual of **change** between two years — useful for restoration plot reporting — compute Δbiomass and put it on a leaflet map with a diverging palette:
 
 ``` r
 delta <- ts |>
   filter(year %in% c(2017, 2024)) |>
-  pivot_wider(names_from = year, values_from = biomass, names_prefix = "b") |>
+  select(plot_id, year, biomass_mean) |>
+  pivot_wider(names_from = year, values_from = biomass_mean, names_prefix = "b") |>
   mutate(delta = b2024 - b2017)
 
 plots_map <- plots_sf |> left_join(delta, by = c("id" = "plot_id"))
@@ -311,6 +374,8 @@ leaflet(plots_map) |>
   addLegend(pal = pal, values = ~delta, title = "Δ Biomass (Mg/ha)")
 ```
 
+[[[[[[[[[[[[[nice figure]]]]]]]]]]]
+
 ------------------------------------------------------------------------
 
 ## Steps to adapt this for your own work
@@ -321,4 +386,3 @@ leaflet(plots_map) |>
 4.  **Buffer CRS - points only -** use a local UTM zone (true metres, not Web Mercator).
 5.  **Time window** to match the annual layer(s) you want.
 6.  **ID column** renamed to whatever the scripts expect (`id` for points, `plot_id` for polygons), or update the scripts.
-

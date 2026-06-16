@@ -276,7 +276,6 @@ leaflet() |>
 
 <img src="https://raw.githubusercontent.com/Osa-Conservation/Extracting_planet_data_to_survey_sites_in_R/refs/heads/main/figures/points_biomass_output.png" height="400"/>
 
-
 ------------------------------------------------------------------------
 
 ## Step 3 — Polygon workflow with a time series
@@ -302,8 +301,6 @@ time_periods <- data.frame(
 )
 
 # Remember to plot your polygons before extracting the data!
-
-
 
 ```
 
@@ -350,7 +347,7 @@ ggplot(ts_long, aes(year, mean, colour = plot_id, fill = plot_id, group = plot_i
   theme_minimal()
 ```
 
-[[[[[[NICE FIGURE]]]]]]]
+<img src="https://raw.githubusercontent.com/Osa-Conservation/Extracting_planet_data_to_survey_sites_in_R/refs/heads/main/figures/temporal changes.png" height="400"/>
 
 For a quick visual of **change** between two years — useful for restoration plot reporting — compute Δbiomass and put it on a leaflet map with a diverging palette:
 
@@ -374,7 +371,7 @@ leaflet(plots_map) |>
   addLegend(pal = pal, values = ~delta, title = "Δ Biomass (Mg/ha)")
 ```
 
-[[[[[[[[[[[[[nice figure]]]]]]]]]]]
+<img src="https://raw.githubusercontent.com/Osa-Conservation/Extracting_planet_data_to_survey_sites_in_R/refs/heads/main/figures/delta_biomass.png" height="400"/>
 
 ------------------------------------------------------------------------
 

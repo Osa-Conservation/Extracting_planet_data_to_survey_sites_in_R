@@ -248,7 +248,8 @@ write.csv(results, "data/example_points_results.csv", row.names = FALSE)
 
 # -------------------------- 7. SANITY-CHECK MAP ------------------------------
 
-results$popup <- sprintf(
+# Make a vector with the resuls to pop up (ordered the same as the dataframe)
+tmp_popup <- sprintf(
   "<b>%s</b><br>Biomass: %.1f Mg/ha [%.1f – %.1f]<br>Canopy cover: %.1f %% [%.1f – %.1f]<br>Canopy height: %.1f m [%.1f – %.1f]",
   results$id,
   results$biomass_mean,       results$biomass_lower,       results$biomass_upper,
@@ -261,10 +262,10 @@ leaflet() |>
   addProviderTiles(providers$OpenStreetMap,     group = "OpenStreetMap") |>
   addPolygons(data = aoi, color = "#FF6600", weight = 2,
               fillColor = "#FF6600", fillOpacity = 0.3,
-              popup = results$popup, group = "Buffers") |>
+              popup = tmp_popup, group = "Buffers") |>
   addCircleMarkers(data = results, lng = ~lon, lat = ~lat,
                    radius = 5, color = "#FF0000", fillOpacity = 0.8,
-                   popup = ~popup, group = "Points") |>
+                   popup = tmp_popup, group = "Points") |>
   addLayersControl(baseGroups = c("Satellite", "OpenStreetMap"),
                    overlayGroups = c("Buffers", "Points"),
                    options = layersControlOptions(collapsed = FALSE))

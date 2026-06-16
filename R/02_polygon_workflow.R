@@ -305,7 +305,7 @@ pal <- colorBin(palette = "RdYlGn",
 
 # Popup shows each year's mean with its 90% prediction interval, then the
 # change. If the two intervals overlap a lot, treat the delta cautiously.
-plots_map$popup <- sprintf(
+tmp_popup <- sprintf(
   "<b>%s</b><br>Biomass %d: %.1f [%.1f-%.1f] Mg/ha<br>Biomass %d: %.1f [%.1f-%.1f] Mg/ha<br>Delta: %+.1f Mg/ha (%+.1f %%)",
   plots_map$id,
   year_a, plots_map[[paste0("biomass_mean_",  year_a)]],
@@ -321,7 +321,7 @@ leaflet(plots_map) |>
   addProviderTiles(providers$Esri.WorldImagery, group = "Satellite") |>
   addProviderTiles(providers$OpenStreetMap,     group = "OpenStreetMap") |>
   addPolygons(fillColor = ~pal(delta), color = "black",
-              weight = 1, fillOpacity = 0.7, popup = ~popup,
+              weight = 1, fillOpacity = 0.7, popup = tmp_popup,
               highlightOptions = highlightOptions(weight = 3, color = "white",
                                                   fillOpacity = 0.9)) |>
   addLegend(position = "bottomright", pal = pal, values = ~delta,

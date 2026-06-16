@@ -13,7 +13,7 @@ The three R scripts (setup, points and polygons) live in [`the R/ folder`](https
 
 ------------------------------------------------------------------------
 
-*Important point*: this code uses the Sentinal Process API, but the Statistical API is purpose-built for generating time series within polygons. It returns mean/stdev/percentiles per time interval directly. It is probably better than this template if you mainly want change-over-time - but the underlying mechanisms are pretty much the same!
+*Important caveat*: this code uses the Sentinal Process API, but the Statistical API is purpose-built for generating time series within polygons. It returns mean/stdev/percentiles per time interval directly. It is probably better than this template if you mainly want change-over-time - but the underlying mechanisms are pretty much the same!
 
 ------------------------------------------------------------------------
 
@@ -21,7 +21,7 @@ The three R scripts (setup, points and polygons) live in [`the R/ folder`](https
 
 The R code to set up your session leaves here: [`R/00_setup.R`](https://github.com/Osa-Conservation/Extracting_planet_data_to_survey_sites_in_R/blob/main/R/00_setup.R)
 
-To run this for your own sites/locations you will need:
+To get this running for uyour own sites or locations you will need:
 
 ### 1. A Sentinel Hub account with an OAuth client
 
@@ -52,7 +52,7 @@ Save, restart R. The scripts associated here then read them with `Sys.getenv()`,
 install.packages(c("httr", "sf", "terra", "dplyr", "tidyr", "ggplot2", "leaflet"))
 ```
 
-That's it. Run [`R/00_setup.R`](https:///github.com/Osa-Conservation/Extracting_planet_data_to_survey_sites_in_R/blob/main/R/00_setup.R) to confirm everything works before the session.
+That's it. Remember - run [`R/00_setup.R`](https:///github.com/Osa-Conservation/Extracting_planet_data_to_survey_sites_in_R/blob/main/R/00_setup.R) before you dive into the other scripts.
 
 ------------------------------------------------------------------------
 
@@ -62,7 +62,7 @@ That's it. Run [`R/00_setup.R`](https:///github.com/Osa-Conservation/Extracting_
 
 ------------------------------------------------------------------------
 
-## Step 1 — Authenticate
+## Authenticate (both Scripts)
 
 The Sentinel Hub API uses OAuth2 client credentials. The code below wsaps your `client_id` and `client_secret` for a short-lived bearer token (\~1 hour), then attaches that token to every API call.
 
@@ -87,7 +87,7 @@ bearer_token <- get_token(Sys.getenv("SH_CLIENT_ID"),
 
 ------------------------------------------------------------------------
 
-## Step 2 — Points workflow (single values per location)
+## Points workflow (single values per location)
 
 *Full script: [`R/01_points_workflow.R`](https://github.com/Osa-Conservation/Extracting_planet_data_to_survey_sites_in_R/blob/main/R/01_points_workflow.R)*
 
@@ -123,7 +123,7 @@ time_from <- "2024-01-01T00:00:00Z"
 time_to   <- "2024-12-31T23:59:59Z"
 ```
 
-**Check your survey locations!** If I had a penny for every time a collaborator gave me a location projecting on the wrong continent or in the ocean...
+**Check your survey locations!** If I had a penny for every time a collaborator gave me survey locations projecting on the wrong continent or in the ocean...
 
 ``` r
 leaflet() |>   addProviderTiles(providers$Esri.WorldImagery) |>   addPolygons(data = aoi, color = "#FF6600", fillOpacity = 0.3, popup = aoi$id) 
@@ -131,7 +131,9 @@ leaflet() |>   addProviderTiles(providers$Esri.WorldImagery) |>   addPolygons(da
 
 <img src="https://raw.githubusercontent.com/Osa-Conservation/Extracting_planet_data_to_survey_sites_in_R/refs/heads/main/figures/points_check.png" height="400"/>
 
-Each row of `aoi` is now a polygon ready to send to the API. The query function takes one polygon + one collection ID + a time window and returns the mean over that AOI:
+Looking good!
+
+Each row of `aoi` is now a polygon ready to send to the API. The query function takes one polygon + one collection ID + a time window and returns the mean and error over that AOI:
 
 ``` r
 sf_to_geojson_coords <- function(polygon_sf) {
@@ -215,9 +217,8 @@ function evaluatePixel(sample) {
 
 Three things worth understanding in that block:
 
-- **IMPORTANT POINT 1:** **`vals[!is.nan(vals)]`** drops masked / out-of-footprint pixels - this might bias the mean upward by excluding genuinely cleared land. Keep zeros unless you have a band-specific reason to drop them!
+- **IMPORTANT POINT 1:** **`keep <- !is.na(vals[, 1])`** drops no-data pixels - this might bias the mean upward by excluding genuinely cleared land. Keep zeros unless you have a band-specific reason to drop them!
 - **IMPORTANT POINT 2: `width = 64, height = 64`** asks the server to return a 64×64 raster covering the AOI's bounding box. For small AOIs this can oversample Forest Carbon's 30 m pixels, which is fine for a mean. For a strict native-resolution read, swap for `resx = 0.0003, resy = 0.0003`.
-- **The `evalscript`** is a small JavaScript snippet that runs on Sentinel Hub's servers, on every pixel of every relevant scene. It returns the band value where `dataMask == 1` and `NaN` otherwise.
 
 Then specify the products you want - swapping the ids for codes in your collection ([Data Collections ・ Planet Insights Platform](https://insights.planet.com/data/collections/#/?tab=planet)). **Note** if you want to create a new collection (e.g. if updated Forest Diligence variables are released) then use this tool - <https://insights.planet.com/data/subscriptions/new>.
 
@@ -244,6 +245,9 @@ collections <- list(
     upper = "UC_Q95"
   )
 )
+
+
+# The specify the loop to pull the results
 
 results <- do.call(rbind, lapply(seq_len(nrow(aoi)), function(i) {
   cent <- st_coordinates(st_centroid(aoi[i, ]))
@@ -301,7 +305,6 @@ time_periods <- data.frame(
 )
 
 # Remember to plot your polygons before extracting the data!
-
 ```
 
 Nested loop — plots × years × collections — produces a long data frame:
@@ -347,7 +350,7 @@ ggplot(ts_long, aes(year, mean, colour = plot_id, fill = plot_id, group = plot_i
   theme_minimal()
 ```
 
-<img src="https://raw.githubusercontent.com/Osa-Conservation/Extracting_planet_data_to_survey_sites_in_R/refs/heads/main/figures/temporal changes.png" height="400"/>
+[[[[[[NICE FIGURE]]]]]]]
 
 For a quick visual of **change** between two years — useful for restoration plot reporting — compute Δbiomass and put it on a leaflet map with a diverging palette:
 
@@ -371,7 +374,7 @@ leaflet(plots_map) |>
   addLegend(pal = pal, values = ~delta, title = "Δ Biomass (Mg/ha)")
 ```
 
-<img src="https://raw.githubusercontent.com/Osa-Conservation/Extracting_planet_data_to_survey_sites_in_R/refs/heads/main/figures/delta_biomass.png" height="400"/>
+[[[[[[[[[[[[[nice figure]]]]]]]]]]]
 
 ------------------------------------------------------------------------
 

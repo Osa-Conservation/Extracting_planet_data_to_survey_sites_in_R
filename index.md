@@ -1,6 +1,6 @@
 ---
+title: "Accessing Planet data in R"
 layout: default
-title: Accessing Planet data in R
 ---
 
 *A 15-minute primer by the Osa Conservation science team.*
@@ -21,7 +21,7 @@ The three R scripts (setup, points and polygons) live in [`the R/ folder`](https
 
 The R code to set up your session leaves here: [`R/00_setup.R`](https://github.com/Osa-Conservation/Extracting_planet_data_to_survey_sites_in_R/blob/main/R/00_setup.R)
 
-To get this running for uyour own sites or locations you will need:
+To get this running for your own sites or locations you will need:
 
 ### 1. A Sentinel Hub account with an OAuth client
 
@@ -350,7 +350,7 @@ ggplot(ts_long, aes(year, mean, colour = plot_id, fill = plot_id, group = plot_i
   theme_minimal()
 ```
 
-[[[[[[NICE FIGURE]]]]]]]
+<img src="https://raw.githubusercontent.com/Osa-Conservation/Extracting_planet_data_to_survey_sites_in_R/refs/heads/main/figures/temporal changes.png" height="400"/>
 
 For a quick visual of **change** between two years — useful for restoration plot reporting — compute Δbiomass and put it on a leaflet map with a diverging palette:
 
@@ -374,7 +374,7 @@ leaflet(plots_map) |>
   addLegend(pal = pal, values = ~delta, title = "Δ Biomass (Mg/ha)")
 ```
 
-[[[[[[[[[[[[[nice figure]]]]]]]]]]]
+<img src="https://raw.githubusercontent.com/Osa-Conservation/Extracting_planet_data_to_survey_sites_in_R/refs/heads/main/figures/delta_biomass.png" height="400"/>
 
 ------------------------------------------------------------------------
 

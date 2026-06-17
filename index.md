@@ -14,6 +14,12 @@ The three R scripts (setup, points and polygons) live in [`the repo's R/ folder`
   - [`Setup script`](https://github.com/Osa-Conservation/Extracting_planet_data_to_survey_sites_in_R/blob/main/R/00_setup.R) - run this to embed your access credentials in your R session and check they work!  
   - [`Points, single time step script`](https://github.com/Osa-Conservation/Extracting_planet_data_to_survey_sites_in_R/blob/main/R/01_points_workflow.R) - if you want to extract data from point locations (e.g. dung beetle traps)  
   - [`Polygons, multiple time steps script`](https://github.com/YOUR-GH-USERNAME/osa-planet-r-tutorial/blob/main/R/02_polygon_workflow.R) - if you want to extract data to shapefiles through time.  
+
+If you want templates to transfer to your own sites, I have included the example .csv (points) and shapefile (polygons). These won't overlap with your collections, so wont work for you.... but sometimes a template is nice:   
+  
+  - [`Example .csv`](https://drive.google.com/file/d/1mBikf95DOv8bE5IAGEE64cUQNPdbyIlx/view?usp=sharing)  
+  - [`Example .shp`](https://drive.google.com/file/d/1Qi169ZLAeuVe7b1kLlnwCXAg5BGB4Hta/view?usp=drive_link)
+
   
 This page walks an overview of the process, **NOTE THE COMPLETE CODE DOES NOT LIVE HERE!**
 

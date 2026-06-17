@@ -9,7 +9,13 @@ By the end of this you'll be able to pull Planet Forest Diligence values (above-
 
 <img src="https://raw.githubusercontent.com/Osa-Conservation/Extracting_planet_data_to_survey_sites_in_R/refs/heads/main/figures/banner_figure.png" height="400"/>
 
-The three R scripts (setup, points and polygons) live in [`the R/ folder`](https://github.com/Osa-Conservation/Extracting_planet_data_to_survey_sites_in_R/tree/main/R). This page walks an overview of the process.
+The three R scripts (setup, points and polygons) live in [`the repo's R/ folder`](https://github.com/Osa-Conservation/Extracting_planet_data_to_survey_sites_in_R/tree/main/R). There is the:  
+  
+  - [`Setup script`](https://github.com/Osa-Conservation/Extracting_planet_data_to_survey_sites_in_R/blob/main/R/00_setup.R) - run this to embed your access credentials in your R session and check they work!  
+  - [`Points, single time step script`](https://github.com/Osa-Conservation/Extracting_planet_data_to_survey_sites_in_R/blob/main/R/01_points_workflow.R) - if you want to extract data from point locations (e.g. dung beetle traps)  
+  - [`Polygons, multiple time steps script`](https://github.com/YOUR-GH-USERNAME/osa-planet-r-tutorial/blob/main/R/02_polygon_workflow.R) - if you want to extract data to shapefiles through time.  
+  
+This page walks an overview of the process, **NOTE THE COMPLETE CODE DOES NOT LIVE HERE!**
 
 ------------------------------------------------------------------------
 
@@ -385,4 +391,4 @@ leaflet(plots_map) |>
 3.  **Source CRS** matches how your coordinates were recorded.
 4.  **Buffer CRS - points only -** use a local UTM zone (true metres, not Web Mercator).
 5.  **Time window** to match the annual layer(s) you want.
-6.  **ID column** renamed to whatever the scripts expect (`id` for points, `plot_id` for polygons), or update the scripts.
+6.  **ID column** renamed to whatever the scripts expect (`id` for points and polygons in this case... but often they vary).

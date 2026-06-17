@@ -5,9 +5,8 @@
 #   1. Read a polygon shapefile.
 #   2. Loop over plots x years x metrics, computing the zonal mean each time —
 #      pulling Planet's lower/upper prediction bounds alongside each value.
-#   3. Plot per-plot time series with the 90% prediction interval as a ribbon.
-#   4. Build a leaflet map coloured by change in biomass (delta ACD) between two
-#      years, with the per-year uncertainty interval shown in the popup.
+#   3. Build a leaflet map coloured by change in biomass (delta ACD) between two
+#      years
 #
 # NOTE!!! This assumes ~/.Renviron has SH_CLIENT_ID and SH_CLIENT_SECRET set. See the setup doc!
 # =============================================================================
@@ -25,10 +24,12 @@ library(leaflet)
 shapefile_path <- "data/example_shapes.shp"   # <- your shapefile
 id_column      <- "id"                        # <- the column that uniquely identifies plots
 
-# Years to query.
+# Specify your years to query
+
 # Full - all data all years
 #years <- 2014:2024
-# Fast - just as an example
+
+# Fast - just as an example!
 years <- c(2017, 2020, 2023)
 
 # Collection IDs to query. Each entry can request several bands at once — the
@@ -211,6 +212,8 @@ time_periods <- data.frame(
   year   = years
 )
 
+time_periods
+
 # -------------------------- 6. EXTRACT TIME SERIES ---------------------------
 
 extract_timeseries <- function(plots_sf, token, collections, time_periods) {
@@ -247,6 +250,9 @@ extract_timeseries <- function(plots_sf, token, collections, time_periods) {
 }
 
 ts <- extract_timeseries(plots_sf, bearer_token, collections, time_periods)
+
+print(ts)
+
 write.csv(ts, "data/plots_timeseries.csv", row.names = FALSE)
 
 # -------------------------- 7. PLOT — per-plot time series -------------------

@@ -79,6 +79,8 @@ bearer_token <- get_token(Sys.getenv("SH_CLIENT_ID"),
 
 pts <- read.csv("data/example_points.csv")
 
+head(pts)
+
 # IMPORTANT: set `crs =` to the CRS the coordinates were recorded in.
 # If your CSV is already lon/lat: crs = 4326.
 # If it's in a local projected system (e.g. CR's CRTM05 = 5367), use that and
@@ -245,6 +247,10 @@ results <- do.call(rbind, lapply(seq_len(nrow(aoi)), function(i) {
 
 print(results)
 write.csv(results, "data/example_points_results.csv", row.names = FALSE)
+
+# Note the L95 and U95 are not really statistical 90% cofidence intervals, they represent the 
+# mean U95 and L95 accross the pixels included in the call. There would be other ways of doing this. 
+
 
 # -------------------------- 7. SANITY-CHECK MAP ------------------------------
 

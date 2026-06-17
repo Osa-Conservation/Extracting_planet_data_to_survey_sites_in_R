@@ -13,7 +13,7 @@ The three R scripts (setup, points and polygons) live in [`the R/ folder`](https
 
 ------------------------------------------------------------------------
 
-*Important caveat*: this code uses the Sentinal Process API, but the Statistical API is purpose-built for generating time series within polygons. It returns mean/stdev/percentiles per time interval directly. It is probably better than this template if you mainly want change-over-time - but the underlying mechanisms are pretty much the same!
+*Important caveat*: this code uses the Sentinel Process API, but the Statistical API is purpose-built for generating time series within polygons. It returns mean/stdev/percentiles per time interval directly. It is probably better than this template if you mainly want change-over-time - but the underlying mechanisms are pretty much the same!
 
 ------------------------------------------------------------------------
 

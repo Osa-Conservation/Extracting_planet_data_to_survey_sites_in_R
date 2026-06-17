@@ -248,8 +248,8 @@ results <- do.call(rbind, lapply(seq_len(nrow(aoi)), function(i) {
 print(results)
 write.csv(results, "data/example_points_results.csv", row.names = FALSE)
 
-# Note the L95 and U95 are not really statistical 90% cofidence intervals, they represent the 
-# mean U95 and L95 accross the pixels included in the call. There would be other ways of doing this. 
+# Note the L95 and U95 are not really statistical 90% confidence intervals, they represent the 
+# mean U95 and L95 across the pixels included in the call.  
 
 
 # -------------------------- 7. SANITY-CHECK MAP ------------------------------

@@ -255,6 +255,9 @@ print(ts)
 
 write.csv(ts, "data/plots_timeseries.csv", row.names = FALSE)
 
+# Note the L95 and U95 are not really statistical 90% confidence intervals, they represent the 
+# mean U95 and L95 across the pixels included in the call.  
+
 # -------------------------- 7. PLOT — per-plot time series -------------------
 # Reshape from wide (biomass_mean, biomass_lower, ...) to long, splitting each
 # column name into a metric and a statistic, then widen the statistic back out
